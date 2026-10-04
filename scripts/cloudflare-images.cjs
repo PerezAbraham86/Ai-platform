@@ -2,9 +2,10 @@
 // A dependency-free MCP stdio bridge to Cloudflare's FLUX.1 Schnell.
 // Credentials come only from the Render environment. stdout is JSON-RPC only.
 const readline = require('node:readline');
+const { createHash } = require('node:crypto');
 const tool = {
   name: 'generate_image',
-  description: 'Generate one image from a text description using FLUX.1 Schnell. Returns the actual image. Text-to-image only; cannot edit an existing image.',
+  description: 'Generate one image from a text description using FLUX.1 Schnell. Returns the actual image and a permanent Cloudinary URL. Include the exact returned permanent URL as a clickable link in your answer. Text-to-image only; cannot edit an existing image.',
   inputSchema: {
     type: 'object',
     properties: { prompt: { type: 'string', minLength: 1, maxLength: 2048 } },
@@ -21,6 +22,12 @@ async function generate(args) {
   const token = process.env.CLOUDFLARE_API_TOKEN;
   if (!account || !/^[a-f0-9]{32}$/i.test(account) || !token) {
     return { isError: true, content: [{ type: 'text', text: 'Set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in Render.' }] };
+  }
+  const cloud = process.env.CLOUDINARY_CLOUD_NAME;
+  const cloudKey = process.env.CLOUDINARY_API_KEY;
+  const cloudSecret = process.env.CLOUDINARY_API_SECRET;
+  if (!cloud || !/^[a-z0-9_-]+$/i.test(cloud) || !cloudKey || !cloudSecret) {
+    return { isError: true, content: [{ type: 'text', text: 'Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in Render before generating images.' }] };
   }
   if (busy) return { isError: true, content: [{ type: 'text', text: 'An image is already generating. Wait for it to finish.' }] };
   busy = true;
@@ -44,7 +51,28 @@ async function generate(args) {
     if (typeof encoded !== 'string' || !encoded.length) throw new Error('Missing image');
     const bytes = Buffer.from(encoded, 'base64');
     const mimeType = bytes[0] === 0x89 && bytes[1] === 0x50 ? 'image/png' : 'image/jpeg';
-    return { content: [{ type: 'image', data: encoded, mimeType }, { type: 'text', text: 'Image generated with FLUX.1 Schnell.' }] };
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const signature = createHash('sha256').update('timestamp=' + timestamp + cloudSecret).digest('hex');
+    const form = new FormData();
+    form.set('file', new Blob([bytes], { type: mimeType }), mimeType === 'image/png' ? 'generated.png' : 'generated.jpg');
+    form.set('api_key', cloudKey);
+    form.set('timestamp', timestamp);
+    form.set('signature', signature);
+    const upload = await fetch('https://api.cloudinary.com/v1_1/' + cloud + '/image/upload', {
+      method: 'POST', body: form, signal: AbortSignal.timeout(20000),
+    });
+    const saved = await upload.json();
+    if (!upload.ok) {
+      return { isError: true, content: [{ type: 'text', text: 'The image was generated, but Cloudinary storage failed (HTTP ' + upload.status + '). Check the Cloudinary credentials and free storage allowance. The image was not saved; no retry or paid fallback was attempted.' }] };
+    }
+    const permanent = new URL(saved.secure_url);
+    if (permanent.protocol !== 'https:' || permanent.hostname !== 'res.cloudinary.com' || !permanent.pathname.startsWith('/' + cloud + '/')) {
+      throw new Error('Invalid storage URL');
+    }
+    return { content: [
+      { type: 'image', data: encoded, mimeType },
+      { type: 'text', text: 'Image generated with FLUX.1 Schnell and saved to Cloudinary. Permanent image link: ' + permanent.href + '\\nInclude this exact link in your answer. This saved original survives Render restarts. Anyone with the link can view it.' },
+    ] };
   } catch {
     return { isError: true, content: [{ type: 'text', text: 'Image generation did not complete. Check the connection and try again.' }] };
   } finally {
@@ -56,7 +84,7 @@ async function handle(message) {
   let result;
   switch (message.method) {
     case 'initialize':
-      result = { protocolVersion: message.params?.protocolVersion || '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'cloudflare-images', version: '1.0.0' } };
+      result = { protocolVersion: message.params?.protocolVersion || '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'cloudflare-images', version: '1.1.0' } };
       break;
     case 'ping': result = {}; break;
     case 'tools/list': result = { tools: [tool] }; break;
