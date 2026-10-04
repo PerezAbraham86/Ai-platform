@@ -1,0 +1,38 @@
+name: Import LibreChat source
+on:
+  push:
+    paths:
+      - .github/workflows/import-librechat.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Import upstream source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -f package.json; then
+            echo "Source already imported; stopping."
+            exit 0
+          fi
+          git clone --depth 1 https://github.com/danny-avila/LibreChat.git "$RUNNER_TEMP/librechat"
+          upstream_sha=$(git -C "$RUNNER_TEMP/librechat" rev-parse HEAD)
+          upstream_url=$(git -C "$RUNNER_TEMP/librechat" remote get-url origin)
+          rm -rf "$RUNNER_TEMP/librechat/.git"
+          if test -d "$RUNNER_TEMP/librechat/.github/workflows"; then
+            mkdir -p "$RUNNER_TEMP/librechat/docs/upstream-workflows"
+            cp -R "$RUNNER_TEMP/librechat/.github/workflows/." "$RUNNER_TEMP/librechat/docs/upstream-workflows/"
+            rm -rf "$RUNNER_TEMP/librechat/.github/workflows"
+          fi
+          rsync -a "$RUNNER_TEMP/librechat/" ./
+          printf '# Upstream source provenance\n\nRepository: %s\nCommit: %s\n\nUpstream workflow files are preserved in docs/upstream-workflows and are not active.\n' "$upstream_url" "$upstream_sha" > UPSTREAM.md
+          printf '# Project setup status\n\nLibreChat source has been imported. No hosting, AI model service, billing, or production deployment has been configured.\n\nKeep credentials out of Git. Configure environment variables only on the chosen host. Chat and image generation each require model services.\n' > PROJECT-SETUP.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Import LibreChat source with license and provenance"
+          git push origin HEAD:main
