@@ -10,3 +10,16 @@ endpoints:
         fetch: false
       titleConvo: false
       modelDisplayLabel: "Groq"
+
+mcpServers:
+  cloudflare-images:
+    title: "Cloudflare Images"
+    description: "Generate images with FLUX.1 Schnell"
+    type: stdio
+    command: node
+    args:
+      - /app/scripts/cloudflare-images.cjs
+    timeout: 150000
+    env:
+      CLOUDFLARE_API_TOKEN: "${CLOUDFLARE_API_TOKEN}"
+      CLOUDFLARE_ACCOUNT_ID: "${CLOUDFLARE_ACCOUNT_ID}"
