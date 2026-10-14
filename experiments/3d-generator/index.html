@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3D Generator · Local Prototype</title>
+<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.1.0/model-viewer.min.js"></script>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#10131d;color:#f3f4fa}*{box-sizing:border-box}
+body{max-width:1050px;margin:0 auto;padding:30px 18px}h1{font-size:1.9rem;margin:0 0 8px}
+p{color:#b8c0d2}section{background:#1a2030;border:1px solid #364056;border-radius:16px;padding:18px;margin:18px 0}
+small{color:#aab4c6}label{display:block;font-weight:650;margin:10px 0}input{max-width:100%;margin-top:7px}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.slot{min-height:120px;background:#111827;border:1px dashed #526079;border-radius:9px;display:flex;align-items:center;justify-content:center;overflow:hidden}.slot img{width:100%;height:150px;object-fit:contain}
+model-viewer{display:block;width:100%;height:420px;background:#0b101a;border-radius:12px}
+button{background:#5b43cb;color:white;border:0;padding:12px 20px;border-radius:8px;font-weight:bold;cursor:pointer}button:disabled{background:#434a5a;cursor:not-allowed}
+.status{padding:10px;border-radius:8px;background:#30364b;color:#f6db99}
+@media(max-width:650px){.grid{grid-template-columns:repeat(2,1fr)}}
+</style></head><body>
+<h1>3D Model Generator</h1><p>Phase 1 · Browser-only prototype. Upload views of <strong>one shoe</strong>. Generation is intentionally disabled.</p>
+<section><h2>1. Reference photographs</h2>
+<label for="images">Choose 1–4 images (front, rear, outside, inside)</label>
+<input id="images" type="file" accept="image/png,image/jpeg,image/webp" multiple>
+<p id="imageStatus" role="status">No photos selected.</p>
+<div class="grid" id="grid"><div class="slot">Front</div><div class="slot">Rear</div><div class="slot">Outside</div><div class="slot">Inside</div></div>
+<small>Local preview only. No upload, server request or remote storage.</small></section>
+<section><h2>2. Generate 3D</h2><p class="status">GPU worker: not configured. Paid jobs: disabled.</p>
+<button disabled aria-disabled="true" title="Requires a vetted GPU inference worker">Generate 3D — unavailable</button></section>
+<section><h2>3. Preview an existing model</h2>
+<label for="model">Choose a local GLB file (or self-contained GLTF)</label><input id="model" type="file" accept=".glb,.gltf,model/gltf-binary,model/gltf+json">
+<p id="modelStatus" role="status">No model selected.</p>
+<model-viewer id="viewer" camera-controls auto-rotate shadow-intensity="1" alt="Local 3D model preview"></model-viewer>
+<p><a id="download" hidden download="model.glb">Save selected GLB</a></p>
+</section>
+<script>
+const imageInput=document.getElementById('images'), slots=document.getElementById('grid'), imageStatus=document.getElementById('imageStatus');
+const modelInput=document.getElementById('model'), viewer=document.getElementById('viewer'), modelStatus=document.getElementById('modelStatus'), download=document.getElementById('download');
+let imageUrls=[],modelUrl=null;
+imageInput.addEventListener('change',()=>{
+ imageUrls.forEach(URL.revokeObjectURL);imageUrls=[];
+ const files=Array.from(imageInput.files||[]);
+ if(files.length>4||files.some(f=>!['image/png','image/jpeg','image/webp'].includes(f.type)||f.size>12*1024*1024)){
+  imageStatus.textContent='Select at most four PNG/JPEG/WebP files, each 12 MB or smaller.';slots.replaceChildren();return;
+ }
+ const names=['Front','Rear','Outside','Inside'];slots.replaceChildren();
+ names.forEach((name,i)=>{const div=document.createElement('div');div.className='slot';if(files[i]){const img=document.createElement('img');img.alt=name+' reference';img.src=URL.createObjectURL(files[i]);imageUrls.push(img.src);div.append(img)}else div.textContent=name;slots.append(div)});
+ imageStatus.textContent=files.length+' reference photo(s) selected; nothing uploaded.';
+});
+modelInput.addEventListener('change',()=>{
+ if(modelUrl){URL.revokeObjectURL(modelUrl);modelUrl=null}
+ viewer.removeAttribute('src');download.hidden=true;download.removeAttribute('href');
+ const file=modelInput.files&&modelInput.files[0];if(!file){modelStatus.textContent='No model selected.';return}
+ if(!/\.(glb|gltf)$/i.test(file.name)||file.size>150*1024*1024){modelStatus.textContent='Choose a GLB/GLTF under 150 MB.';return}
+ modelUrl=URL.createObjectURL(file);viewer.src=modelUrl;modelStatus.textContent='Previewing '+file.name+' locally.';
+ if(/\.glb$/i.test(file.name)){download.href=modelUrl;download.download=file.name;download.hidden=false;download.textContent='Download selected GLB'}
+});
+window.addEventListener('pagehide',()=>{imageUrls.forEach(URL.revokeObjectURL);if(modelUrl)URL.revokeObjectURL(modelUrl)});
+</script></body></html>
