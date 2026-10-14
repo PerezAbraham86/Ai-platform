@@ -100,7 +100,7 @@ export default function ThreeDGenerator() {
           <h2 className="mb-2 text-lg font-semibold">2. Generate 3D</h2>
           <p className="mb-3 text-sm text-text-secondary">Free prototype: builds a rough solid from the LEFT or RIGHT side photograph. It cannot reconstruct accurate laces, soles, logos or unseen surfaces. The other views are saved as visual references only. No GPU or paid service is used.</p>
           <button type="button" onClick={generateLocal} disabled={generating} className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white disabled:opacity-60">{generating ? 'Generating locally…' : 'Generate approximate GLB — free'}</button>
-          {generationInfo && <p role="status" className="mt-3 text-sm text-text-secondary">{generationInfo}</p>
+          {generationInfo && <p role="status" className="mt-3 text-sm text-text-secondary">{generationInfo}</p>}
         </section>
         <section className="rounded-xl border border-border-light bg-surface-primary-alt p-5">
           <h2 className="mb-3 text-lg font-semibold">3. Preview a local 3D model</h2>
