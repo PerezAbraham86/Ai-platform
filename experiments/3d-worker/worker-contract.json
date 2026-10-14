@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "engine": "hunyuan3d-2mv",
+  "state": "not-deployed",
+  "enabled_by_default": false,
+  "accepted_views": [
+    "front",
+    "left",
+    "back"
+  ],
+  "unsupported_views": [
+    "right",
+    "top",
+    "bottom"
+  ],
+  "formats": [
+    "glb"
+  ],
+  "execution": "manual-gpu-only",
+  "public_api": false,
+  "license": "Tencent Hunyuan 3D 2.0 Community License"
+}
