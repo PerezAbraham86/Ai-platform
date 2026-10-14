@@ -46,6 +46,9 @@ const loadInsightsView = () =>
     Component: m.default,
   }));
 
+const load3DGeneratorView = () =>
+  import('./ThreeDGenerator').then((m) => ({ Component: m.default }));
+
 const loadProjectsView = () =>
   import('~/components/Projects').then((m) => ({
     Component: m.ProjectsView,
@@ -134,6 +137,10 @@ export const router = createBrowserRouter(
             {
               path: 'c/:conversationId?',
               element: <ChatRoute />,
+            },
+            {
+              path: '3d-generator',
+              lazy: load3DGeneratorView,
             },
             {
               path: 'search',

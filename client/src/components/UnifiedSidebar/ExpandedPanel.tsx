@@ -1,7 +1,7 @@
 import { memo, useCallback, lazy, Suspense } from 'react';
 import { useRecoilValue } from 'recoil';
-import { SquarePen } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { Box3, SquarePen } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import { Skeleton, Sidebar, Button, TooltipAnchor } from '@librechat/client';
 import type { NavLink } from '~/common';
 import { useShortcutAriaKey, useShortcutHint } from '~/hooks/useKeyboardShortcuts';
@@ -171,6 +171,24 @@ function ExpandedPanel({
       />
       <NewChatButton setActive={setActive} />
       <AgentMarketplaceButton />
+      <TooltipAnchor
+        side="right"
+        description="3D Generator"
+        render={
+          <Link
+            to="/3d-generator"
+            aria-label="3D Generator"
+            data-testid="3d-generator-nav"
+            aria-current={location.pathname === '/3d-generator' ? 'page' : undefined}
+            className={cn(
+              'flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-surface-hover',
+              location.pathname === '/3d-generator' ? 'bg-surface-active-alt text-text-primary' : 'text-text-secondary',
+            )}
+          >
+            <Box3 className="h-5 w-5" aria-hidden="true" />
+          </Link>
+        }
+      />
       <div className="mx-2 border-b border-border-light" />
       <div className="flex flex-col gap-1 overflow-y-auto">
         {links.map((link) => (
