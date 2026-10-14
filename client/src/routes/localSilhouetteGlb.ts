@@ -62,7 +62,7 @@ export async function silhouetteToGlb(src: string): Promise<Blob> {
   const mins = [Infinity,Infinity,Infinity], maxs = [-Infinity,-Infinity,-Infinity];
   for(let i=0;i<vertices.length;i+=3) for(let a=0;a<3;a++){mins[a]=Math.min(mins[a],vertices[i+a]);maxs[a]=Math.max(maxs[a],vertices[i+a]);}
   const gltf = {asset:{version:'2.0',generator:'Local silhouette extrusion prototype'},scene:0,
-    scenes:[{nodes:[0]}],nodes:[{mesh:0}],meshes:[{primitives:[{attributes:{POSITION:0},indices:1,material:0}]}],
+    scenes:[{nodes:[0]}],nodes:[{mesh:0,rotation:[-0.70710678,0,0,0.70710678]}],meshes:[{primitives:[{attributes:{POSITION:0},indices:1,material:0}]}],
     materials:[{pbrMetallicRoughness:{baseColorFactor:[0.88,0.9,0.94,1],metallicFactor:0,roughnessFactor:0.9},doubleSided:true}],
     buffers:[{byteLength:bin.length}],bufferViews:[{buffer:0,byteOffset:0,byteLength:posBytes.length,target:34962},
     {buffer:0,byteOffset:offset,byteLength:idxBytes.length,target:34963}],
