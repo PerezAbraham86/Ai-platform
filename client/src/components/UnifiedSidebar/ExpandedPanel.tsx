@@ -1,6 +1,6 @@
 import { memo, useCallback, lazy, Suspense } from 'react';
 import { useRecoilValue } from 'recoil';
-import { Box3, SquarePen } from 'lucide-react';
+import { Box, SquarePen } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { Skeleton, Sidebar, Button, TooltipAnchor } from '@librechat/client';
 import type { NavLink } from '~/common';
@@ -185,7 +185,7 @@ function ExpandedPanel({
               location.pathname === '/3d-generator' ? 'bg-surface-active-alt text-text-primary' : 'text-text-secondary',
             )}
           >
-            <Box3 className="h-5 w-5" aria-hidden="true" />
+            <Box className="h-5 w-5" aria-hidden="true" />
           </Link>
         }
       />
