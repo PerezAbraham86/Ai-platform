@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { silhouetteToGlb } from './localSilhouetteGlb';
 
 const VIEWER_SCRIPT = 'https://ajax.googleapis.com/ajax/libs/model-viewer/4.1.0/model-viewer.min.js';
 const labels = ['Front', 'Left', 'Right', 'Back', 'Top', 'Bottom'];
@@ -9,6 +10,8 @@ export default function ThreeDGenerator() {
   const [modelUrl, setModelUrl] = useState('');
   const [modelName, setModelName] = useState('');
   const [modelError, setModelError] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [generationInfo, setGenerationInfo] = useState('');
   const viewerHost = useRef<HTMLDivElement>(null);
 
   useEffect(() => () => {
@@ -47,6 +50,22 @@ export default function ThreeDGenerator() {
     setPhotos(selected.map((file) => URL.createObjectURL(file)));
   }
 
+  async function generateLocal() {
+    // Side silhouette drives this coarse prototype. Other views are reference only.
+    const source = photos[1] || photos[2];
+    if (!source) { setGenerationInfo('Upload a LEFT or RIGHT side photograph first.'); return; }
+    setGenerating(true); setGenerationInfo('Creating a coarse mesh locally…');
+    try {
+      const blob = await silhouetteToGlb(source);
+      setModelUrl(URL.createObjectURL(blob));
+      setModelName('local-silhouette-prototype.glb');
+      setModelError('');
+      setGenerationInfo('GLB created locally. This is an approximate side-silhouette extrusion, not a faithful multi-view reconstruction. Other images are not yet used by the geometry algorithm.');
+    } catch (err) {
+      setGenerationInfo(err instanceof Error ? err.message : 'Local reconstruction failed.');
+    } finally { setGenerating(false); }
+  }
+
   function onModel(file: File | undefined) {
     if (!file) return;
     if (!/\.glb$/i.test(file.name) || file.size > 150 * 1024 * 1024) {
@@ -63,7 +82,7 @@ export default function ThreeDGenerator() {
       <div className="mx-auto max-w-5xl space-y-5">
         <header>
           <h1 className="text-2xl font-semibold">3D Generator</h1>
-          <p className="mt-1 text-sm text-text-secondary">Upload reference views of one object. Phase 2 previews run locally in your browser; AI generation is not connected.</p>
+          <p className="mt-1 text-sm text-text-secondary">Upload reference views of one object. Free browser-based silhouette generation is available; AI generation is not connected.</p>
         </header>
         <section className="rounded-xl border border-border-light bg-surface-primary-alt p-5">
           <h2 className="mb-3 text-lg font-semibold">1. Reference photos</h2>
@@ -79,8 +98,9 @@ export default function ThreeDGenerator() {
         </section>
         <section className="rounded-xl border border-border-light bg-surface-primary-alt p-5">
           <h2 className="mb-2 text-lg font-semibold">2. Generate 3D</h2>
-          <p className="mb-3 text-sm text-text-secondary">GPU worker not configured. No paid generation services are enabled.</p>
-          <button type="button" disabled className="rounded-lg bg-gray-500 px-4 py-2 font-medium text-white opacity-60">Generate 3D — not available yet</button>
+          <p className="mb-3 text-sm text-text-secondary">Free prototype: builds a rough solid from the LEFT or RIGHT side photograph. It cannot reconstruct accurate laces, soles, logos or unseen surfaces. The other views are saved as visual references only. No GPU or paid service is used.</p>
+          <button type="button" onClick={generateLocal} disabled={generating} className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white disabled:opacity-60">{generating ? 'Generating locally…' : 'Generate approximate GLB — free'}</button>
+          {generationInfo && <p role="status" className="mt-3 text-sm text-text-secondary">{generationInfo}</p>
         </section>
         <section className="rounded-xl border border-border-light bg-surface-primary-alt p-5">
           <h2 className="mb-3 text-lg font-semibold">3. Preview a local 3D model</h2>
