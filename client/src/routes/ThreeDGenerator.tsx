@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 const VIEWER_SCRIPT = 'https://ajax.googleapis.com/ajax/libs/model-viewer/4.1.0/model-viewer.min.js';
-const labels = ['Front', 'Rear', 'Outer side', 'Inner side'];
+const labels = ['Front', 'Left', 'Right', 'Back', 'Top', 'Bottom'];
 
 export default function ThreeDGenerator() {
   const [photos, setPhotos] = useState<string[]>([]);
@@ -39,8 +39,8 @@ export default function ThreeDGenerator() {
 
   function onImages(files: FileList | null) {
     const selected = Array.from(files ?? []);
-    if (selected.length > 4 || selected.some((file) => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 12 * 1024 * 1024)) {
-      setPhotoError('Select up to four JPG, PNG or WebP images, each under 12 MB.');
+    if (selected.length > 6 || selected.some((file) => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 12 * 1024 * 1024)) {
+      setPhotoError('Select up to six JPG, PNG or WebP images, each under 12 MB.');
       return;
     }
     setPhotoError('');
@@ -67,10 +67,10 @@ export default function ThreeDGenerator() {
         </header>
         <section className="rounded-xl border border-border-light bg-surface-primary-alt p-5">
           <h2 className="mb-3 text-lg font-semibold">1. Reference photos</h2>
-          <label htmlFor="three-d-photos" className="mb-2 block text-sm">Choose 1–4 views: front, rear, outside and inside</label>
+          <label htmlFor="three-d-photos" className="mb-2 block text-sm">Choose up to 6 views in order: front, left, right, back, top, bottom</label>
           <input id="three-d-photos" type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => onImages(event.target.files)} />
           {photoError && <p className="mt-2 text-sm text-red-500" role="alert">{photoError}</p>}
-          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
             {labels.map((label, index) => <div key={label} className="flex h-36 items-center justify-center overflow-hidden rounded-lg border border-border-light bg-surface-primary">
               {photos[index] ? <img className="h-full w-full object-contain" src={photos[index]} alt={label} /> : <span className="text-sm text-text-secondary">{label}</span>}
             </div>)}
