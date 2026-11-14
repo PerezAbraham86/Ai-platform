@@ -46,6 +46,7 @@ const insights = require('./insights');
 const threeDGeneration = require('./threeDGeneration');
 
 module.exports = {
+  threeDGeneration,
   insights,
   rum,
   mcp,
