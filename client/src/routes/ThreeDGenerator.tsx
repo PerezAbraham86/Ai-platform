@@ -3,9 +3,48 @@ import { useEffect, useRef, useState } from 'react';
 
 const VIEWER_SCRIPT = 'https://ajax.googleapis.com/ajax/libs/model-viewer/4.1.0/model-viewer.min.js';
 const labels = ['Front', 'Left', 'Right', 'Back', 'Top', 'Bottom'];
+type GeneratorEngine = 'pixal3d' | 'hunyuan3d-2mv' | 'local-silhouette';
+const ENGINE_OPTIONS: {
+  id: GeneratorEngine;
+  name: string;
+  description: string;
+  status: string;
+  available: boolean;
+}[] = [
+  { id: 'pixal3d', name: 'Pixal3D', description: 'High-detail AI image-to-3D reconstruction. Multi-view requires camera transforms and a GPU worker.', status: 'GPU worker not connected', available: false },
+  { id: 'hunyuan3d-2mv', name: 'Hunyuan3D 2mv', description: 'Experimental multi-view AI reconstruction (front, left and back).', status: 'Experimental worker not deployed', available: false },
+  { id: 'local-silhouette', name: 'Local Silhouette', description: 'Quick approximate extrusion from a side photograph, performed entirely in your browser.', status: 'Available now', available: true },
+];
 
 export default function ThreeDGenerator() {
   const [photos, setPhotos] = useState<string[]>([]);
+  const [engine, setEngine] = useState<GeneratorEngine>('pixal3d');
+  const [modelCatalog, setModelCatalog] = useState(ENGINE_OPTIONS);
+  const selectedEngine = modelCatalog.find((option) => option.id === engine) ?? ENGINE_OPTIONS[0];
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/3d-generation/models', { credentials: 'same-origin', signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error('Model catalog unavailable');
+        return response.json();
+      })
+      .then((data: { models?: { id: string; available: boolean; status: string }[] }) => {
+        if (!Array.isArray(data.models)) return;
+        setModelCatalog(ENGINE_OPTIONS.map((option) => {
+          const remote = data.models?.find((item) => item.id === option.id);
+          if (!remote) return option;
+          return {
+            ...option,
+            // GPU models must be enabled in both UI and a verified server capability.
+            available: option.id === 'local-silhouette' && remote.available === true,
+            status: remote.status,
+          };
+        }));
+      })
+      .catch(() => { /* Keep safe local defaults if API is unavailable. */ });
+    return () => controller.abort();
+  }, []);
   const [photoError, setPhotoError] = useState('');
   const [modelUrl, setModelUrl] = useState('');
   const [modelName, setModelName] = useState('');
@@ -82,7 +121,7 @@ export default function ThreeDGenerator() {
       <div className="mx-auto max-w-5xl space-y-5">
         <header>
           <h1 className="text-2xl font-semibold">3D Generator</h1>
-          <p className="mt-1 text-sm text-text-secondary">Upload reference views of one object. Free browser-based silhouette generation is available; AI generation is not connected.</p>
+          <p className="mt-1 text-sm text-text-secondary">Upload reference views, choose a reconstruction model, and preview or download GLB files. AI GPU workers are not connected yet.</p>
         </header>
         <section className="rounded-xl border border-border-light bg-surface-primary-alt p-5">
           <h2 className="mb-3 text-lg font-semibold">1. Reference photos</h2>
@@ -98,8 +137,15 @@ export default function ThreeDGenerator() {
         </section>
         <section className="rounded-xl border border-border-light bg-surface-primary-alt p-5">
           <h2 className="mb-2 text-lg font-semibold">2. Generate 3D</h2>
-          <p className="mb-3 text-sm text-text-secondary">Free prototype: builds a rough solid from the LEFT or RIGHT side photograph. It cannot reconstruct accurate laces, soles, logos or unseen surfaces. The other views are saved as visual references only. No GPU or paid service is used.</p>
-          <button type="button" onClick={generateLocal} disabled={generating} className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white disabled:opacity-60">{generating ? 'Generating locally…' : 'Generate approximate GLB — free'}</button>
+          <label htmlFor="three-d-engine" className="mb-2 block text-sm font-medium">Reconstruction model</label>
+          <select id="three-d-engine" value={engine} onChange={(event) => { setEngine(event.target.value as GeneratorEngine); setGenerationInfo(''); }} className="mb-3 w-full rounded-lg border border-border-light bg-surface-primary p-2 text-text-primary">
+            {modelCatalog.map((option) => <option key={option.id} value={option.id}>{option.name} — {option.status}</option>)}
+          </select>
+          <p className="mb-2 text-sm text-text-secondary">{selectedEngine.description}</p>
+          <p className="mb-3 text-xs text-text-secondary" role="status">Status: {selectedEngine.status}</p>
+          {engine === 'pixal3d' && <p className="mb-3 text-xs text-text-secondary">Our tested Pixal3D pipeline uses four prepared RGBA views with calibrated camera transforms. Arbitrary photo uploads are not yet supported for live inference.</p>}
+          {engine === 'hunyuan3d-2mv' && <p className="mb-3 text-xs text-text-secondary">The existing experimental adapter supports front, left and back only; right, top and bottom are not accepted by that worker.</p>}
+          <button type="button" onClick={generateLocal} disabled={generating || !selectedEngine.available} className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white disabled:cursor-not-allowed disabled:opacity-60">{generating ? 'Generating locally…' : selectedEngine.available ? 'Generate approximate GLB — free' : 'AI generation unavailable — GPU not connected'}</button>
           {generationInfo && <p role="status" className="mt-3 text-sm text-text-secondary">{generationInfo}</p>}
         </section>
         <section className="rounded-xl border border-border-light bg-surface-primary-alt p-5">
