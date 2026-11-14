@@ -19,7 +19,32 @@ const ENGINE_OPTIONS: {
 export default function ThreeDGenerator() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [engine, setEngine] = useState<GeneratorEngine>('pixal3d');
-  const selectedEngine = ENGINE_OPTIONS.find((option) => option.id === engine)!;
+  const [modelCatalog, setModelCatalog] = useState(ENGINE_OPTIONS);
+  const selectedEngine = modelCatalog.find((option) => option.id === engine) ?? ENGINE_OPTIONS[0];
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/3d-generation/models', { credentials: 'same-origin', signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error('Model catalog unavailable');
+        return response.json();
+      })
+      .then((data: { models?: { id: string; available: boolean; status: string }[] }) => {
+        if (!Array.isArray(data.models)) return;
+        setModelCatalog(ENGINE_OPTIONS.map((option) => {
+          const remote = data.models?.find((item) => item.id === option.id);
+          if (!remote) return option;
+          return {
+            ...option,
+            // GPU models must be enabled in both UI and a verified server capability.
+            available: option.id === 'local-silhouette' && remote.available === true,
+            status: remote.status,
+          };
+        }));
+      })
+      .catch(() => { /* Keep safe local defaults if API is unavailable. */ });
+    return () => controller.abort();
+  }, []);
   const [photoError, setPhotoError] = useState('');
   const [modelUrl, setModelUrl] = useState('');
   const [modelName, setModelName] = useState('');
@@ -114,7 +139,7 @@ export default function ThreeDGenerator() {
           <h2 className="mb-2 text-lg font-semibold">2. Generate 3D</h2>
           <label htmlFor="three-d-engine" className="mb-2 block text-sm font-medium">Reconstruction model</label>
           <select id="three-d-engine" value={engine} onChange={(event) => { setEngine(event.target.value as GeneratorEngine); setGenerationInfo(''); }} className="mb-3 w-full rounded-lg border border-border-light bg-surface-primary p-2 text-text-primary">
-            {ENGINE_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.name} — {option.status}</option>)}
+            {modelCatalog.map((option) => <option key={option.id} value={option.id}>{option.name} — {option.status}</option>)}
           </select>
           <p className="mb-2 text-sm text-text-secondary">{selectedEngine.description}</p>
           <p className="mb-3 text-xs text-text-secondary" role="status">Status: {selectedEngine.status}</p>
